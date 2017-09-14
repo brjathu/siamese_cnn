@@ -14,7 +14,7 @@ import matplotlib.image as mpimg
 import pickle
 from scipy.special import entr
 
-target_style = scipy.io.loadmat('test_data/icons/style/orignal|angry_birds|angry_birds.mat')
+target_style = scipy.io.loadmat('test_data/icons/test1/orignal|angry_birds|angry_birds.mat')
 search = True
 
 
@@ -25,17 +25,17 @@ def main():
         # first dirctory
         path = "test_data/icons"
         count = 0
-        location = os.listdir(path + "/style/")
+        location = os.listdir(path + "/test1/")
         for file in location:
             # name = file.split("|")
             # if(name[1] == "angry_birds"):
-            style = scipy.io.loadmat(path + '/style/' + file)
+            style = scipy.io.loadmat(path + '/test1/' + file)
 
-            sqr = score(style, 2)
+            sqr = score(style)
             if(count == 0):
-                table = np.array([file, cos[0], cos[1], sqr[0], sqr[1]])
+                table = np.array([file, sqr])
             else:
-                table = np.vstack((table, [file, cos[0], cos[1], sqr[0], sqr[1]]))
+                table = np.vstack((table, [file, sqr]))
 
             if(count % 100 == 0):
                 print(count)
@@ -43,35 +43,27 @@ def main():
 
         print("===========   DONE  ===========")
         print(table)
-        count = 0
-        correct = 0
-        total = 10
-        sorted_table = np.array(sorted(table, key=lambda a_entry: float(a_entry[3]) + 1e-15 * float(a_entry[4])))[0:total]
+
+        sorted_table = np.array(sorted(table, key=lambda a_entry: float(a_entry[1]) ))[0:10]
         fig = plt.figure()
 
+        count = 1
         for name in sorted_table:
-            test = name[0].split("|")[0]
-            print(test)
-            if(test == "orignal"):
-                correct += 1
-            count = count + 1
             a = fig.add_subplot(2, 5, count)
             a.axis('off')
             try:
-                image1 = mpimg.imread('playstore/png/all/' + name[0][0:-4] + '.png')
+                image1 = mpimg.imread('test_data/icons/png/' + name[0][0:-4] + '.png')
                 plt.imshow(image1)
             except:
                 print("pass")
-        print(correct / total * 100)
-        # plt.show()
+            count += 1
+        plt.show()
         # fig.savefig("me.png")
 
 
 def score(style):
-
     squred_difference_style = (((style['conv5_1'] - target_style['conv5_1']))**2)
     sum_style = np.sum(squred_difference_style)
-
     return(sum_style)
 
 
