@@ -25,11 +25,11 @@ def main():
         # first dirctory
         path = "test_data/icons"
         count = 0
-        location = os.listdir(path + "/test1/")
+        location = os.listdir(path + "/test3/")
         for file in location:
             # name = file.split("|")
             # if(name[1] == "angry_birds"):
-            style = scipy.io.loadmat(path + '/test1/' + file)
+            style = scipy.io.loadmat(path + '/test3/' + file)
 
             sqr = score(style)
             if(count == 0):

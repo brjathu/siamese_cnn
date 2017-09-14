@@ -13,7 +13,7 @@ import random
 
 
 #parameters
-M = 100000
+M = 1000000
 
 
 
@@ -34,7 +34,7 @@ training_negative = random.sample(training_negative, 100)
 training_positve = random.sample(training_positve, 100)
 print(len(training_negative))
 print(len(training_positve))
-y = 0
+y = 1
 count = 0
 
 
@@ -43,11 +43,11 @@ with tf.device('/cpu:0'), tf.Session() as sess:
     images = tf.placeholder(tf.float32, [1, 224, 224, 3])
     train_mode = tf.placeholder(tf.bool)
 
-    vgg = vgg19.Vgg19('./test-save.npy')
+    vgg = vgg19.Vgg19('./vgg19.npy')
     vgg.build(images, train_mode)
 
     sess.run(tf.global_variables_initializer())
-    for sample in training_negative:
+    for sample in training_positve:
 
         img1 = utils.load_image("test_data/icons/png/" + sample[0][0][0:-4] + ".png")
         img2 = utils.load_image("test_data/icons/png/" + sample[0][1][0:-4] + ".png")
@@ -61,7 +61,6 @@ with tf.device('/cpu:0'), tf.Session() as sess:
         features1 = sess.run(vgg.conv5_1, feed_dict={images: batch1, train_mode: False})
         features1 = np.reshape(features1, (-1,512))
         gram1 = np.matmul(features1.T, features1) / features1.size
-        print("first image done.")
 
         a = tf.reshape(vgg.conv5_1,[-1,512])
         if(y==1):
@@ -69,7 +68,7 @@ with tf.device('/cpu:0'), tf.Session() as sess:
         else:
             cost =   tf.maximum( 0.0 , M**2 - tf.reduce_sum(( gram1 - tf.matmul(tf.transpose(a), a)/(14*14*512) ) ** 2) )
         #traing step
-        train = tf.train.GradientDescentOptimizer(0.000000000001).minimize(cost)
+        train = tf.train.GradientDescentOptimizer(0.00000000001).minimize(cost)
         sess.run(train, feed_dict={images: batch2, train_mode: True})
 
         # test classification again, should have a higher probability about tiger
@@ -77,4 +76,4 @@ with tf.device('/cpu:0'), tf.Session() as sess:
         utils.print_prob(prob[0], './synset.txt')
 
     # test save
-    vgg.save_npy(sess, './test-save2.npy')
+    vgg.save_npy(sess, './test1.npy')
