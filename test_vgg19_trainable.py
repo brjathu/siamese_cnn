@@ -16,7 +16,6 @@ img1 = utils.load_image("./test_data/tiger.jpeg")
 img2 = utils.load_image("./test_data/puzzle.jpeg")
 y = 0
 count = 0
-img1_true_result = [1 if i == 292 else 0 for i in range(1000)]  # 1-hot result for tiger
 
 batch1 = img1.reshape((1, 224, 224, 3))
 batch2 = img2.reshape((1, 224, 224, 3))
