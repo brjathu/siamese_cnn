@@ -14,7 +14,7 @@ M = 100000
 
 img1 = utils.load_image("./test_data/tiger.jpeg")
 img2 = utils.load_image("./test_data/puzzle.jpeg")
-y = 1
+y = 0
 count = 0
 img1_true_result = [1 if i == 292 else 0 for i in range(1000)]  # 1-hot result for tiger
 
