@@ -13,7 +13,7 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 location = os.listdir("test_data/icons/png/")
 
 g = tf.Graph()
-with g.as_default(), g.device('/cpu:0'), tf.Session() as sess:
+with g.as_default(), g.device('/gpu:0'), tf.Session() as sess:
     images = tf.placeholder("float", [1, 224, 224, 3])
     vgg = vgg19.Vgg19("./test2.npy")
     with tf.name_scope("content_vgg"):
@@ -28,5 +28,4 @@ with g.as_default(), g.device('/cpu:0'), tf.Session() as sess:
         features = np.reshape( conv5_1 , (-1,512))
         gram = np.matmul(features.T, features)/features.size
         print(gram.shape)
-        # scipy.io.savemat("../style/WIKI_STYLE_TEST/" + str(class_num) + "/features/content1000/" + name[int(((count + 1) / batch_size - 1) * batch_size + i)][0:-4] + '.mat', mdict={'prob': prob[i]}, oned_as='row')
-        scipy.io.savemat("test_data/icons/test3/" + img[0:-4] + '.mat', mdict={'conv5_1': gram}, oned_as='row')
+        scipy.io.savemat("test_data/icons/test6/" + img[0:-4] + '.mat', mdict={'conv5_1': gram}, oned_as='row')

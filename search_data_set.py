@@ -14,7 +14,7 @@ import matplotlib.image as mpimg
 import pickle
 from scipy.special import entr
 
-target_style = scipy.io.loadmat('test_data/icons/test1/orignal|angry_birds|angry_birds.mat')
+target_style = scipy.io.loadmat('test_data/icons/test6/orignal|angry_birds|angry_birds.mat')
 search = True
 
 
@@ -25,11 +25,11 @@ def main():
         # first dirctory
         path = "test_data/icons"
         count = 0
-        location = os.listdir(path + "/test3/")
+        location = os.listdir(path + "/test6/")
         for file in location:
             # name = file.split("|")
             # if(name[1] == "angry_birds"):
-            style = scipy.io.loadmat(path + '/test3/' + file)
+            style = scipy.io.loadmat(path + '/test6/' + file)
 
             sqr = score(style)
             if(count == 0):
