@@ -18,10 +18,8 @@ with tf.device('/cpu:0'), tf.Session() as sess:
     # sess = tf.Session()
     images = tf.placeholder(tf.float32, [1, 224, 224, 3])
     train_mode = tf.placeholder(tf.bool)
-
     vgg = vgg19.Vgg19('./vgg19.npy')
     vgg.build(images, train_mode)
-
     sess.run(tf.global_variables_initializer())
 
 
@@ -63,9 +61,9 @@ with tf.device('/cpu:0'), tf.Session() as sess:
 			            cost =   tf.maximum( 0.0 , M**2 - tf.reduce_sum(( gram1 - tf.matmul(tf.transpose(a), a)/(14*14*512) ) ** 2) )
 			        #traing step
 			        train = tf.train.GradientDescentOptimizer(LR).minimize(cost)
-			        sess.run(train, feed_dict={images: batch2, train_mode: True})
+			        _, costp = sess.run([train,cost], feed_dict={images: batch2, train_mode: True})
 
-			        # test classification again, should have a higher probability about tiger
+                    # test classification again, should have a higher probability about tiger
 			        prob = sess.run(vgg.prob, feed_dict={images: batch1, train_mode: False})
 			        utils.print_prob(prob[0], './synset.txt')
 
