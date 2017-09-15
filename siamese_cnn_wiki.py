@@ -8,7 +8,9 @@ import random
 
 
 #parameters
-M = 1e10
+M = 1e9
+EPOCH = 1
+LR = 1e-12
 
 class_list = [0,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26]
 
@@ -25,7 +27,7 @@ with tf.device('/cpu:0'), tf.Session() as sess:
 
     for class_style_1 in class_list:
     	for class_style_2 in class_list:
-    		print(class_style_1 + "   ========   " + class_style_2)
+    		print(str(class_style_1) + "   ========   " + str(class_style_2))
     		if(class_style_1 == class_style_2):
     			y = 1
     			batch = 20
@@ -33,13 +35,13 @@ with tf.device('/cpu:0'), tf.Session() as sess:
     			y = 0
     			batch = 5
     		epoch = 1
-    		class_1 = random.sample(os.listdir("/flush/raj034/WIKI_STYLE/" + str(class_style_1) + "/"),batch)
-    		class_2 = random.sample(os.listdir("/flush/raj034/WIKI_STYLE/" + str(class_style_2) + "/"),batch)
+    		class_1 = random.sample(os.listdir("../wiki/style/WIKI_STYLE/" + str(class_style_1) + "/img/"),batch)
+    		class_2 = random.sample(os.listdir("../wiki/style/WIKI_STYLE/" + str(class_style_2) + "/img/"),batch)
 
     		count = 0
     		for i in range(batch):
-		        img1 = utils.load_image("/flush/raj034/WIKI_STYLE/" + str(class_style_1) + "/" + class_1[i])
-		        img2 = utils.load_image("/flush/raj034/WIKI_STYLE/" + str(class_style_2) + "/" + class_2[i])
+		        img1 = utils.load_image("../wiki/style/WIKI_STYLE/" + str(class_style_1) + "/img/" + class_1[i])
+		        img2 = utils.load_image("../wiki/style/WIKI_STYLE/" + str(class_style_2) + "/img/" + class_2[i])
 
 		        if count == 0:
 		        	batch1 = img1.reshape((1, 224, 224, 3))
@@ -60,7 +62,7 @@ with tf.device('/cpu:0'), tf.Session() as sess:
 			        else:
 			            cost =   tf.maximum( 0.0 , M**2 - tf.reduce_sum(( gram1 - tf.matmul(tf.transpose(a), a)/(14*14*512) ) ** 2) )
 			        #traing step
-			        train = tf.train.GradientDescentOptimizer(1e-11).minimize(cost)
+			        train = tf.train.GradientDescentOptimizer(LR).minimize(cost)
 			        sess.run(train, feed_dict={images: batch2, train_mode: True})
 
 			        # test classification again, should have a higher probability about tiger

@@ -21,7 +21,7 @@ def load_image(path):
     xx = int((img.shape[1] - short_edge) / 2)
     crop_img = img[yy: yy + short_edge, xx: xx + short_edge]
     # resize to 224, 224
-    resized_img = skimage.transform.resize(crop_img, (224, 224))
+    resized_img = skimage.transform.resize(crop_img, (224, 224), mode='constant')
     return resized_img
 
 
@@ -34,11 +34,13 @@ def print_prob(prob, file_path):
 
     # Get top1 label
     top1 = synset[pred[0]]
-    print(("Top1: ", top1, prob[pred[0]]))
+    # print(("Top1: ", top1, prob[pred[0]]))
+    print(prob[pred[0]])
+
     # Get top5 label
     top5 = [(synset[pred[i]], prob[pred[i]]) for i in range(5)]
-    print(("Top5: ", top5))
-    return top1
+    # print(("Top5: ", top5))
+    # return top1
 
 
 def load_image2(path, height=None, width=None):

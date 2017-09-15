@@ -8,7 +8,8 @@ import random
 
 
 #parameters
-M = 1e15
+M = 1e9
+LR = 1e-12
 
 location = os.listdir("test_data/icons/png/")
 combination = list(itertools.combinations(location, 2))
@@ -63,7 +64,7 @@ with tf.device('/cpu:0'), tf.Session() as sess:
         else:
             cost =   tf.maximum( 0.0 , M**2 - tf.reduce_sum(( gram1 - tf.matmul(tf.transpose(a), a)/(14*14*512) ) ** 2) )
         #traing step
-        train = tf.train.GradientDescentOptimizer(1e-11).minimize(cost)
+        train = tf.train.GradientDescentOptimizer(LR).minimize(cost)
         sess.run(train, feed_dict={images: batch2, train_mode: True})
 
         # test classification again, should have a higher probability about tiger
