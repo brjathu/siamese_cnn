@@ -1,0 +1,76 @@
+"""
+Simple tester for the vgg19_trainable
+"""
+
+import tensorflow as tf
+
+import vgg19_trainable as vgg19
+import utils
+import numpy as np
+import os
+import itertools
+import random
+
+
+#parameters
+M = 1e10
+
+class_list = [0,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26]
+
+with tf.device('/cpu:0'), tf.Session() as sess:
+    # sess = tf.Session()
+    images = tf.placeholder(tf.float32, [1, 224, 224, 3])
+    train_mode = tf.placeholder(tf.bool)
+
+    vgg = vgg19.Vgg19('./vgg19.npy')
+    vgg.build(images, train_mode)
+
+    sess.run(tf.global_variables_initializer())
+
+
+    for class_style_1 in class_list:
+    	for class_style_2 in class_list:
+    		print(class_style_1 + "   ========   " + class_style_2)
+    		if(class_style_1 == class_style_2):
+    			y = 1
+    			batch = 20
+    		else:
+    			y = 0
+    			batch = 5
+    		epoch = 1
+    		class_1 = random.sample(os.listdir("/flush/raj034/WIKI_STYLE/" + str(class_style_1) + "/"),batch)
+    		class_2 = random.sample(os.listdir("/flush/raj034/WIKI_STYLE/" + str(class_style_2) + "/"),batch)
+
+    		count = 0
+    		for i in range(batch):
+		        img1 = utils.load_image("/flush/raj034/WIKI_STYLE/" + str(class_style_1) + "/" + class_1[i])
+		        img2 = utils.load_image("/flush/raj034/WIKI_STYLE/" + str(class_style_2) + "/" + class_2[i])
+
+		        if count == 0:
+		        	batch1 = img1.reshape((1, 224, 224, 3))
+		        	batch2 = img2.reshape((1, 224, 224, 3))
+		        else:
+		        	batch1 = np.concatenate((batch1, img1.reshape((1, 224, 224, 3))), 0)
+		        	batch2 = np.concatenate((batch2, img2.reshape((1, 224, 224, 3))), 0)
+
+		        # count += 1
+		        for epoch in range(EPOCH):
+			        features1 = sess.run(vgg.conv5_1, feed_dict={images: batch1, train_mode: False})
+			        features1 = np.reshape(features1, (-1,512))
+			        gram1 = np.matmul(features1.T, features1) / features1.size
+
+			        a = tf.reshape(vgg.conv5_1,[-1,512])
+			        if(y==1):
+			            cost = tf.reduce_sum(( gram1 - tf.matmul(tf.transpose(a), a)/(14*14*512) ) ** 2)
+			        else:
+			            cost =   tf.maximum( 0.0 , M**2 - tf.reduce_sum(( gram1 - tf.matmul(tf.transpose(a), a)/(14*14*512) ) ** 2) )
+			        #traing step
+			        train = tf.train.GradientDescentOptimizer(1e-11).minimize(cost)
+			        sess.run(train, feed_dict={images: batch2, train_mode: True})
+
+			        # test classification again, should have a higher probability about tiger
+			        prob = sess.run(vgg.prob, feed_dict={images: batch1, train_mode: False})
+			        utils.print_prob(prob[0], './synset.txt')
+
+    # test save
+    vgg.save_npy(sess, './test1.npy')
