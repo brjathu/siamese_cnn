@@ -1,9 +1,4 @@
-"""
-Simple tester for the vgg19_trainable
-"""
-
 import tensorflow as tf
-
 import vgg19_trainable as vgg19
 import utils
 import numpy as np

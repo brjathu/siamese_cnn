@@ -10,8 +10,6 @@ import random
 #parameters
 M = 1e15
 
-
-
 location = os.listdir("test_data/icons/png/")
 combination = list(itertools.combinations(location, 2))
 training_positve = []
@@ -33,7 +31,6 @@ print(len(training_negative))
 print(len(training_positve))
 
 count = 0
-
 
 with tf.device('/cpu:0'), tf.Session() as sess:
     # sess = tf.Session()
