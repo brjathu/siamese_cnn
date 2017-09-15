@@ -14,6 +14,9 @@ LR = 1e-12
 
 class_list = [0,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26]
 
+os.system("rm log.txt")
+LOG_FILE=open('log.txt', 'a')
+
 with tf.device('/cpu:0'), tf.Session() as sess:
     # sess = tf.Session()
     images = tf.placeholder(tf.float32, [1, 224, 224, 3])
@@ -25,7 +28,7 @@ with tf.device('/cpu:0'), tf.Session() as sess:
 
     for class_style_1 in class_list:
     	for class_style_2 in class_list:
-    		print(str(class_style_1) + "   ========   " + str(class_style_2))
+    		logEntry(str(class_style_1) + "   ========   " + str(class_style_2))
     		if(class_style_1 == class_style_2):
     			y = 1
     			batch = 20
@@ -65,7 +68,13 @@ with tf.device('/cpu:0'), tf.Session() as sess:
 
                     # test classification again, should have a higher probability about tiger
 			        prob = sess.run(vgg.prob, feed_dict={images: batch1, train_mode: False})
-			        utils.print_prob(prob[0], './synset.txt')
+			        logEntry(utils.print_prob(prob[0], './synset.txt'))
 
     # test save
     vgg.save_npy(sess, './test1.npy')
+
+def logEntry(TMP_STRING):
+    LOG_FILE.write(str(TMP_STRING))
+    LOG_FILE.write("\n")
+    LOG_FILE.flush()
+    print(str(TMP_STRING))
