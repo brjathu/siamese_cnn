@@ -28,26 +28,25 @@ def logEntry(TMP_STRING):
     print(str(TMP_STRING))
 
 
-with tf.device('/cpu:0'), tf.Session() as sess:
-    # sess = tf.Session()
+with tf.device('/gpu:0'), tf.Session() as sess:
     images = tf.placeholder(tf.float32, [1, 224, 224, 3])
     train_mode = tf.placeholder(tf.bool)
-    vgg = vgg19.Vgg19('./vgg19.npy')
+    vgg = vgg19.Vgg19('vgg19.npy')
     vgg.build(images, train_mode)
     sess.run(tf.global_variables_initializer())
-    saver = tf.train.Saver()
-    # saver.restore(sess, 'train/')
+    # saver = tf.train.Saver()
+    # saver.restore(sess, 'train/model13')
     for class_style_1 in class_list:
-        saver.save(sess, 'train/model' + str(class_style_1), write_meta_graph=False)
+        # saver.save(sess, 'train/model' + str(class_style_1), write_meta_graph=False)
         for class_style_2 in class_list:
             logEntry(str(class_style_1) + "   ========   " + str(class_style_2))
             if(class_style_1 == class_style_2):
                 y = 1
-                batch = 20
+                batch = 10
                 LR = 1e-13
             else:
                 y = 0
-                batch = 2
+                batch = 1
                 LR = 1e-15
             class_1 = random.sample(os.listdir(
                 "../wiki/style/WIKI_STYLE/" + str(class_style_1) + "/img/"), batch)
@@ -91,4 +90,4 @@ with tf.device('/cpu:0'), tf.Session() as sess:
                     prob = sess.run(vgg.prob, feed_dict={images: batch1, train_mode: False})
                     logEntry(utils.print_prob(prob[0], './synset.txt'))
     # test save
-    vgg.save_npy(sess, str('./test' + str(class_style_1) + '.npy'))
+    vgg.save_npy(sess, str('./testX.npy'))
