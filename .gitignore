@@ -11,3 +11,4 @@ job
 log.txt
 train/*
 norm/*
+*.png
