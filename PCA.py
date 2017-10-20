@@ -7,11 +7,31 @@ import scipy.misc
 import scipy.io
 import math
 from PIL import Image
+import matplotlib
+matplotlib.use('agg')
 import matplotlib.pyplot as plt
+plt.switch_backend('agg')
+from sklearn import metrics
+import seaborn as sns
 import matplotlib.image as mpimg
 from sklearn.decomposition import PCA
 import scipy.io
+import pickle
+
 # from matplotlib.mlab import PCA
+
+test_case = "style_test1"
+model = "test1/0"
+
+main_dir = "/flush1/raj034/vgg19/" + model + "/"
+LOG_FILE = open(main_dir + 'log.txt', 'a')
+
+
+def logEntry(TMP_STRING):
+    LOG_FILE.write(str(TMP_STRING))
+    LOG_FILE.write("\n")
+    LOG_FILE.flush()
+    print(str(TMP_STRING))
 
 
 def pca2(data, pc_count=None):
@@ -19,60 +39,38 @@ def pca2(data, pc_count=None):
 
 
 def main():
-    class_list = [0,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26]
-    name = []
-    features = np.load("norm/style_mat.npy")
-    print(features.shape)
-    name = np.load("norm/name.npy")
-    results = pca2(features)
 
-    print(results.shape)
-    print(results[0].shape)
-    np.save("norm/results.npy", results)
-    results = np.load("results.npy")
-    num = 0
-    for l in class_list:
-        os.system("mkdir ../wiki/style/WIKI_STYLE/" + str(l) + "/features/style2000")
-        print(l)
-        for i in range(100):
-            scipy.io.savemat('style/WIKI_STYLE/' + str(l) + '/features/style2000/' + name[num][0:-4] + '.mat', mdict={'gramPCA': results[num]}, oned_as='row')
-            num = num + 1
+    train_vect = np.load(main_dir + "train_vectors.npy")
+    train_label = np.load(main_dir + "train_label.npy")
 
-    #########################################################
-    #
-    #          PCA for testing samples
-    #
-    #########################################################
-    # for l in class_list:
-    #     print(l)
-    #     location_style = os.listdir("../style/WIKI_STYLE_TEST/"+str(l)+"/features/style/")
-    #     location_style = random.sample(location_style, 50)
-    #     for file in location_style:
+    pca = PCA(n_components=2000)
 
-    #         style = scipy.io.loadmat("../style/WIKI_STYLE_TEST/"+str(l)+"/features/style/"+file)
+    results = pca.fit_transform(train_vect)
 
-    #         style1 = style['conv5_1']
-    #         features = np.reshape(style1 , (1, -1))
-    #         out = (features-mean).dot(comp.T)
+    logEntry(results.shape)
+    logEntry(results[0].shape)
+    np.save(main_dir + "train_pca.npy", results)
+    with open(main_dir + 'pca.pkl', 'wb') as f:
+        pickle.dump(pca, f)
 
-    #         print(out.shape)
+    ################################################################
+    with open(main_dir + 'pca.pkl', 'rb') as f:
+        pca = pickle.load(f)
 
-    # print(features.shape)
+    var = pca.explained_variance_ratio_
 
-    # results = pca2(features)
+    np.save(main_dir + "var_test.npy", var)
+    plt.plot(np.array(var))
+    plt.savefig(main_dir + "var.png")
 
-    # #     # print(results)
-    # print(results.shape)
-    # print(results[0].shape)
-    # np.save("results.npy", results)
-    # print(count)
-    # num = 0
-    # for l in class_list:
-    #     for i in range(100):
-    #         scipy.io.savemat('../style/WIKI_STYLE_TEST/'+str(l)+'/features/style1000/'+name[num][0:-4]+'.mat', mdict={'conv5_1': results[num] }, oned_as='row')
-    #         num = num + 1
-    # #     count = count + 1
+    test_vectors = np.load(main_dir + "test_vectors.npy")
+    test_label = np.load(main_dir + "test_label.npy")
 
+    results_test = pca.transform(test_vectors)
+
+    logEntry(results_test.shape)
+    logEntry(results_test[0].shape)
+    np.save(main_dir + "test_pca.npy", results_test)
 
 if __name__ == '__main__':
     main()
