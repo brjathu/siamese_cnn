@@ -18,14 +18,15 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 # parameters
 M = 1e6
 EPOCH = 50
-LR = 1e-13
+LR = 1e-11
 
-model = "test1"
+model = "test2"
+main_dir = "/flush1/raj034/vgg19/" + model + "/"
+os.system("mkdir " + main_dir)
 class_list = [0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
               14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
 
-os.system("rm log.txt")
-LOG_FILE = open('log.txt', 'a')
+LOG_FILE = open(main_dir + 'log.txt', 'a')
 
 
 def logEntry(TMP_STRING):
@@ -37,17 +38,36 @@ def logEntry(TMP_STRING):
 
 # train positive samples
 y = 1
-batch = 10
+batch = 5
 
 
 # create tf models
-images = tf.placeholder(tf.float32, [batch, 224, 224, 3])
+images1 = tf.placeholder(tf.float32, [batch, 224, 224, 3])
+images2 = tf.placeholder(tf.float32, [batch, 224, 224, 3])
+pos = tf.placeholder(tf.float32, [batch, 1])
+neg = tf.placeholder(tf.float32, [batch, 1])
 train_mode = tf.placeholder(tf.bool)
-vgg = vgg19.Vgg19('vgg19.npy')
-vgg.build(images, train_mode)
+vgg1 = vgg19.Vgg19('vgg19.npy')
+vgg1.build(images1, train_mode)
 
-# saver = tf.train.Saver()
-# saver.restore(sess, 'train/model13')
+vgg2 = vgg19.Vgg19('vgg19.npy')
+vgg2.build(images2, train_mode)
+
+features1 = tf.reshape(vgg1.conv5_1, [batch, -1, 512])
+features2 = tf.reshape(vgg2.conv5_1, [batch, -1, 512])
+
+gram1 = tf.matmul(tf.transpose(features1, perm=[0, 2, 1]), features1) / tf.cast(tf.size(features1), tf.float32)
+gram2 = tf.matmul(tf.transpose(features2, perm=[0, 2, 1]), features2) / tf.cast(tf.size(features2), tf.float32)
+# logEntry("debugger 2 ========= >  " + str(features1.shape))
+# logEntry("debugger 3 ========= >  " + str(gram1.shape))
+
+cost = tf.multiply(tf.reshape(tf.reduce_sum((gram1 - gram2) / (14 * 14 * 512), axis=[1, 2]) ** 2, (batch, 1)), pos) + \
+    tf.multiply(tf.reshape(M - tf.reduce_sum((gram1 - gram2) / (14 * 14 * 512), axis=[1, 2]) ** 2, (batch, 1)), neg)
+# logEntry("debugger 6 ========= >  " + str(cost.shape))
+
+# traing step
+train = tf.train.GradientDescentOptimizer(LR).minimize(cost)
+
 loss = 0
 loss_graph = []
 with tf.device('/cpu'), tf.Session() as sess:
@@ -60,14 +80,14 @@ with tf.device('/cpu'), tf.Session() as sess:
             # saver.save(sess, 'train/model' + str(class_style_1), write_meta_graph=False)
             logEntry(str(class_style_1) + "   ========   positive samples ")
 
-            class_1 = random.sample(os.listdir(
-                "/flush1/raj034/WIKI_STYLE/" + str(class_style_1) + "/img/"), batch)
-            class_2 = random.sample(os.listdir(
-                "/flush1/raj034/WIKI_STYLE/" + str(class_style_1) + "/img/"), batch)
+            class_1 = sorted(os.listdir("/flush1/raj034/WIKI_STYLE/" + str(class_style_1) + "/img/"))[:batch]
+            class_2 = sorted(os.listdir("/flush1/raj034/WIKI_STYLE/" + str(class_style_1) + "/img/"))[batch:batch * 2]
 
+            y_pos = np.ones((batch, 1))
+            y_neg = np.zeros((batch, 1))
             count = 0
             for i in range(batch):
-                # logEntry(str(class_style_1) + "   ========   " + str(class_1[i]))
+                logEntry(str(class_style_1) + "   ========   " + str(class_1[i]))
 
                 img1 = utils.load_image("/flush1/raj034/WIKI_STYLE/" +
                                         str(class_style_1) + "/img/" + class_1[i])
@@ -84,28 +104,15 @@ with tf.device('/cpu'), tf.Session() as sess:
                 count += 1
                 # logEntry("debugger 0 ========= >  " + str(count) + "    " + str(batch1.shape))
 
-            features1 = sess.run(vgg.conv5_1, feed_dict={
-                                 images: batch1, train_mode: False})
-            # logEntry("debugger 1 ========= >  " + str(features1.shape))
-
-            features1 = np.reshape(features1, (batch, -1, 512))
-            gram1 = np.matmul(np.transpose(features1, (0, 2, 1)), features1) / features1.size
-            # logEntry("debugger 2 ========= >  " + str(features1.shape))
-            # logEntry("debugger 3 ========= >  " + str(gram1.shape))
-            a = tf.reshape(vgg.conv5_1, [batch, -1, 512])
-
-            cost = tf.reduce_sum((gram1 - tf.matmul(tf.transpose(a, perm=[0, 2, 1]), a) / (14 * 14 * 512)) ** 2)
-
-            # traing step
-            train = tf.train.GradientDescentOptimizer(LR).minimize(cost)
-            _, costp = sess.run([train, cost], feed_dict={
-                                images: batch2, train_mode: True})
+            _, costp = sess.run([train, cost], feed_dict={images1: batch1, images2: batch2, pos: y_pos, neg: y_neg, train_mode: True})
+            logEntry("debugger 4 ========= >  " + str(costp))
 
             # test classification again, should have a higher probability about tiger
-            prob = sess.run(vgg.prob, feed_dict={images: batch1, train_mode: False})
-            logEntry(prob.shape)
+            prob = sess.run(vgg1.prob, feed_dict={images1: batch1, train_mode: False})
             logEntry(str(class_style_1) + "      " + str(utils.print_prob(prob[0], './synset.txt')))
-            loss_avg += costp
+            prob = sess.run(vgg2.prob, feed_dict={images2: batch1, train_mode: False})
+            logEntry(str(class_style_1) + "      " + str(utils.print_prob(prob[0], './synset.txt')))
+            loss_avg += np.sum(costp)
 
         loss_graph.append(loss_avg)
         np.save(str("/flush1/raj034/vgg19/" + model + "/") + "loss.npy", loss_graph)
@@ -113,7 +120,8 @@ with tf.device('/cpu'), tf.Session() as sess:
         plt.plot(np.array(loss_graph))
         plt.savefig(str("/flush1/raj034/vgg19/" + model + "/") + "loss_graph.png")
         os.system("mkdir /flush1/raj034/vgg19/" + model + "/" + str(epoch))
-        vgg.save_npy(sess, str("/flush1/raj034/vgg19/" + model + "/" + str(epoch) + "/testX.npy"))
+        vgg1.save_npy(sess, str("/flush1/raj034/vgg19/" + model + "/" + str(epoch) + "/vgg19_1.npy"))
+        vgg2.save_npy(sess, str("/flush1/raj034/vgg19/" + model + "/" + str(epoch) + "/vgg19_2.npy"))
         # plt.show()
 
 #         saver.save(sess, "model/" + str(MODEL) + "/ckpt/dnn.ckpt")
@@ -182,4 +190,4 @@ with tf.device('/cpu'), tf.Session() as sess:
     #             logEntry(prob.shape)
     #             logEntry(utils.print_prob(prob[0], './synset.txt'))
     # test save
-    vgg.save_npy(sess, str('/flush1/raj034/testX.npy'))
+    # vgg.save_npy(sess, str('/flush1/raj034/testX.npy'))
