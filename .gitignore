@@ -7,6 +7,7 @@ __pycache__/
 dog_gr.jpg
 private
 test_data/icons/*
+data/*
 job
 log.txt
 train/*
