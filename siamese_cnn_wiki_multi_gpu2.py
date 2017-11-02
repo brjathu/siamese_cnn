@@ -1,5 +1,5 @@
 import tensorflow as tf
-import vgg19_trainable as vgg19
+import vgg19_trainable_mini as vgg19
 import utils
 import numpy as np
 import os
@@ -14,6 +14,16 @@ import seaborn as sns
 
 tf.set_random_seed(1)
 tf.logging.set_verbosity(tf.logging.ERROR)
+
+# parameters
+M = 200  # sqrt(0.2)
+EPOCH = 100
+LR = 1e-5
+model = "testX3"
+batch_size = 78
+class_list = [0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+              14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
+num_gpu = 3
 
 
 def logEntry(TMP_STRING):
@@ -59,69 +69,98 @@ def validation_accuracy(val_data):
     val_acc = (p + n) * 1.0 / (val_data.shape[0])
     return val_acc
 
-# parameters
-M = 200  # sqrt(0.2)
-EPOCH = 100
-LR = 1e-6
+
+def siamese_model(images1, images2, pos, neg, train_mode):
+    vgg1 = vgg19.Vgg19('vgg19.npy')
+    vgg1.build(images1, train_mode)
+
+    vgg2 = vgg19.Vgg19('vgg19.npy')
+    vgg2.build(images2, train_mode)
+
+    features1 = tf.reshape(vgg1.conv3_2, [batch_size, -1, 256], name="features1")
+    features2 = tf.reshape(vgg2.conv3_2, [batch_size, -1, 256], name="features2")
+
+    gram1 = tf.matmul(tf.transpose(features1, perm=[0, 2, 1]), features1, name="gram1") / (256 * 196) / (256 * 196)
+    gram2 = tf.matmul(tf.transpose(features2, perm=[0, 2, 1]), features2, name="gram2") / (256 * 196) / (256 * 196)
+    loss = tf.reshape(tf.reduce_sum((gram1 - gram2), axis=[1, 2]) ** 2, (batch_size, 1), name="loss")
+    pos_loss = tf.multiply(tf.reshape(loss, (batch_size, 1)), pos, name="pos_loss")
+    neg_loss = tf.multiply(tf.where(tf.less(loss, M), M - loss, tf.zeros_like(loss)), neg, name="neg_loss")
+    cost = tf.reduce_sum(pos_loss + neg_loss)
+
+    return cost
 
 
-model = "testX2"
-main_dir = "/flush1/raj034/vgg19/" + model + "/"
-os.system("mkdir " + main_dir)
-LOG_FILE = open(main_dir + 'log.txt', 'a')
+def make_parallel(fn, num_gpus, train, **kwargs):
+    in_splits = {}
+    for k, v in kwargs.items():
+        in_splits[k] = tf.split(v, num_gpus)
+    print(in_splits)
 
-train_data = np.load("data/final_train.npy")
-logEntry("debugger a ========= >  " + str(train_data.shape))
-train_data = train_data[0:800, :]
+    out_split = []
+    for i in range(num_gpus):
+        with tf.device(tf.DeviceSpec(device_type="GPU", device_index=i)):
+            with tf.variable_scope(tf.get_variable_scope(), reuse=(i > 0)):
+                out_split.append(fn(**{k: v[i] for k, v in in_splits.items()}))
+
+    # return tf.concat(out_split, axis=0)
+    return tf.reduce_sum(out_split, axis=0)
+
+
+def make_parallel_after(fn, num_gpus, train, **kwargs):
+    in_splits = {}
+    for k, v in kwargs.items():
+        in_splits[k] = np.split(v, num_gpus)
+    print(in_splits)
+
+    out_split = []
+    for i in range(num_gpus):
+        with tf.device(tf.DeviceSpec(device_type="GPU", device_index=i)):
+            with tf.variable_scope(tf.get_variable_scope(), reuse=True):
+                out_split.append(fn(**{k: v[i] for k, v in in_splits.items()}))
+
+    # return tf.concat(out_split, axis=0)
+    return tf.reduce_sum(out_split, axis=0)
+
+
+# main_dir = "/flush1/raj034/vgg19/" + model + "/"
+# os.system("mkdir " + main_dir)
+# LOG_FILE = open(main_dir + 'log.txt', 'a')
+
+# train_data = np.load("data/final_train.npy")
+# # logEntry("debugger a ========= >  " + str(train_data.shape))
+# train_data = train_data[0:800, :]
 # logEntry("debugger b ========= >  " + str(train_data.shape))
 
-val_data = np.load("data/final_val.npy")
-logEntry("debugger c ========= >  " + str(val_data.shape))
-val_data = val_data[0:160, :]
+# val_data = np.load("data/final_val.npy")
+# # logEntry("debugger c ========= >  " + str(val_data.shape))
+# val_data = val_data[0:160, :]
 # logEntry("debugger d ========= >  " + str(val_data.shape))
 
-test_data = np.load("data/final_test.npy")
+# test_data = np.load("data/final_test.npy")
 
-class_list = [0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
-              14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
+##################################################################################
+# Tensorflow model
+##################################################################################
+with tf.device('/cpu'):
+    images1 = tf.placeholder(tf.float32, [batch_size, 224, 224, 3], name="images1")
+    images2 = tf.placeholder(tf.float32, [batch_size, 224, 224, 3], name="images2")
+
+    pos = tf.placeholder(tf.float32, [batch_size, 1], name="positive_samples")
+    neg = tf.placeholder(tf.float32, [batch_size, 1], name="negetive_samples")
+
+    train_mode = tf.placeholder(tf.bool, name="train_mode")
 
 
-# train positive samples
-batch_size = 64
-
-
-# create tf models
-images1 = tf.placeholder(tf.float32, [batch_size, 224, 224, 3], name="images1")
-images2 = tf.placeholder(tf.float32, [batch_size, 224, 224, 3], name="images2")
-
-pos = tf.placeholder(tf.float32, [batch_size, 1], name="positive_samples")
-neg = tf.placeholder(tf.float32, [batch_size, 1], name="negetive_samples")
-
-train_mode = tf.placeholder(tf.bool, name="train_mode")
-
-vgg1 = vgg19.Vgg19('vgg19.npy')
-vgg1.build(images1, train_mode)
-
-vgg2 = vgg19.Vgg19('vgg19.npy')
-vgg2.build(images2, train_mode)
-
-features1 = tf.reshape(vgg1.conv5_1, [batch_size, -1, 512], name="features1")
-features2 = tf.reshape(vgg2.conv5_1, [batch_size, -1, 512], name="features2")
-
-gram1 = tf.matmul(tf.transpose(features1, perm=[0, 2, 1]), features1, name="gram1") / (512 * 196) / (512 * 196)
-gram2 = tf.matmul(tf.transpose(features2, perm=[0, 2, 1]), features2, name="gram2") / (512 * 196) / (512 * 196)
-loss = tf.reshape(tf.reduce_sum((gram1 - gram2), axis=[1, 2]) ** 2, (batch_size, 1), name="loss")
-pos_loss = tf.multiply(tf.reshape(loss, (batch_size, 1)), pos, name="pos_loss")
-neg_loss = tf.multiply(tf.where(tf.less(loss, M), M - loss, tf.zeros_like(loss)), neg, name="neg_loss")
-cost = tf.reduce_sum(pos_loss + neg_loss)
-# cost = pos_loss + neg_loss
+cost = make_parallel(siamese_model, num_gpu, train=train_mode, images1=images1, images2=images2, pos=pos, neg=neg, train_mode=train_mode)
 
 # traing step
-train = tf.train.AdamOptimizer(LR, beta1=0.9, beta2=0.999, epsilon=1e-08, use_locking=False).minimize(cost)
+train = tf.train.AdamOptimizer(LR).minimize(tf.reduce_mean(cost), colocate_gradients_with_ops=True)
 
 loss_graph = []
 val_graph = []
-with tf.device('/gpu'), tf.Session() as sess:
+
+start = 0
+with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
 
     for epoch in range(EPOCH):
@@ -155,11 +194,13 @@ with tf.device('/gpu'), tf.Session() as sess:
 
                 count += 1
             _, costp = sess.run([train, cost], feed_dict={images1: batch1, images2: batch2, pos: y_pos, neg: y_neg, train_mode: True})
-            # costp = sess.run(cost, feed_dict={images1: batch1, images2: batch2, pos: y_pos, neg: y_neg, train_mode: False})
+
             logEntry("debugger 3 ========= >  " + str(costp))
 
             loss_avg += np.sum(costp)
-
+            if(s == 0):
+                s = 1
+                start = False
         # validation
         for b in range(int(val_data.shape[0] / batch_size)):
             logEntry("#validation debugger 1 ========= >  " + str(b) + "batch of" + str(int(val_data.shape[0] / batch_size)))

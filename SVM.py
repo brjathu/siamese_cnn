@@ -20,7 +20,7 @@ import pickle
 
 # preprocessing
 
-model = "test1/0"
+model = "testX1/0"
 
 main_dir = "/flush1/raj034/vgg19/" + model + "/"
 LOG_FILE = open(main_dir + 'log.txt', 'a')
@@ -55,7 +55,7 @@ def logEntry(TMP_STRING):
 if (train == True):
     train_vect = np.load(main_dir + "train_pca.npy")
     train_label = np.load(main_dir + "train_label.npy")
-    clf = SVC(kernel='poly', gamma="auto", decision_function_shape="ovo")
+    clf = SVC(kernel='linear', gamma=1, decision_function_shape="ovr")
     # clf = LinearDiscriminantAnalysis(n_components=20)
     clf.fit(train_vect, train_label[:, 1])
 

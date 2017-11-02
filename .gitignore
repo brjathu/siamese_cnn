@@ -7,9 +7,10 @@ __pycache__/
 dog_gr.jpg
 private
 test_data/icons/*
-data/*
 job
-log.txt
-train/*
-norm/*
-*.png
+*.sublime-workspace
+*.sublime-project
+LOG_test/*
+data/*
+bck/*
+*.jpg

@@ -1,3 +1,5 @@
+# Copyright (c) 2015-2017 Anish Athalye. Released under GPLv3.
+
 import os
 import random
 import numpy as np
@@ -18,8 +20,7 @@ import pickle
 
 # from matplotlib.mlab import PCA
 
-test_case = "style_test1"
-model = "test1/0"
+model = "testX1/0"
 
 main_dir = "/flush1/raj034/vgg19/" + model + "/"
 LOG_FILE = open(main_dir + 'log.txt', 'a')

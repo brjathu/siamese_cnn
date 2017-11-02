@@ -1,5 +1,5 @@
 import tensorflow as tf
-import vgg19_trainable as vgg19
+import vgg19_trainable_mini as vgg19
 import utils
 import numpy as np
 import os
@@ -14,6 +14,16 @@ import seaborn as sns
 
 tf.set_random_seed(1)
 tf.logging.set_verbosity(tf.logging.ERROR)
+
+# parameters
+M = 200  # sqrt(0.2)
+EPOCH = 100
+LR = 1e-5
+model = "testX3"
+batch_size = 80
+class_list = [0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+              14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
+num_gpu = 3
 
 
 def logEntry(TMP_STRING):
@@ -59,38 +69,27 @@ def validation_accuracy(val_data):
     val_acc = (p + n) * 1.0 / (val_data.shape[0])
     return val_acc
 
-# parameters
-M = 200  # sqrt(0.2)
-EPOCH = 100
-LR = 1e-6
 
-
-model = "testX2"
 main_dir = "/flush1/raj034/vgg19/" + model + "/"
 os.system("mkdir " + main_dir)
 LOG_FILE = open(main_dir + 'log.txt', 'a')
 
 train_data = np.load("data/final_train.npy")
-logEntry("debugger a ========= >  " + str(train_data.shape))
+# logEntry("debugger a ========= >  " + str(train_data.shape))
 train_data = train_data[0:800, :]
-# logEntry("debugger b ========= >  " + str(train_data.shape))
+logEntry("debugger b ========= >  " + str(train_data.shape))
 
 val_data = np.load("data/final_val.npy")
-logEntry("debugger c ========= >  " + str(val_data.shape))
+# logEntry("debugger c ========= >  " + str(val_data.shape))
 val_data = val_data[0:160, :]
-# logEntry("debugger d ========= >  " + str(val_data.shape))
+logEntry("debugger d ========= >  " + str(val_data.shape))
 
 test_data = np.load("data/final_test.npy")
 
-class_list = [0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
-              14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
+##################################################################################
+# Tensorflow model
+##################################################################################
 
-
-# train positive samples
-batch_size = 64
-
-
-# create tf models
 images1 = tf.placeholder(tf.float32, [batch_size, 224, 224, 3], name="images1")
 images2 = tf.placeholder(tf.float32, [batch_size, 224, 224, 3], name="images2")
 
@@ -105,22 +104,22 @@ vgg1.build(images1, train_mode)
 vgg2 = vgg19.Vgg19('vgg19.npy')
 vgg2.build(images2, train_mode)
 
-features1 = tf.reshape(vgg1.conv5_1, [batch_size, -1, 512], name="features1")
-features2 = tf.reshape(vgg2.conv5_1, [batch_size, -1, 512], name="features2")
+features1 = tf.reshape(vgg1.conv3_1, [batch_size, -1, 256], name="features1")
+features2 = tf.reshape(vgg2.conv3_1, [batch_size, -1, 256], name="features2")
 
-gram1 = tf.matmul(tf.transpose(features1, perm=[0, 2, 1]), features1, name="gram1") / (512 * 196) / (512 * 196)
-gram2 = tf.matmul(tf.transpose(features2, perm=[0, 2, 1]), features2, name="gram2") / (512 * 196) / (512 * 196)
+gram1 = tf.matmul(tf.transpose(features1, perm=[0, 2, 1]), features1, name="gram1") / (256 * 196) / (256 * 196)
+gram2 = tf.matmul(tf.transpose(features2, perm=[0, 2, 1]), features2, name="gram2") / (256 * 196) / (256 * 196)
 loss = tf.reshape(tf.reduce_sum((gram1 - gram2), axis=[1, 2]) ** 2, (batch_size, 1), name="loss")
 pos_loss = tf.multiply(tf.reshape(loss, (batch_size, 1)), pos, name="pos_loss")
 neg_loss = tf.multiply(tf.where(tf.less(loss, M), M - loss, tf.zeros_like(loss)), neg, name="neg_loss")
 cost = tf.reduce_sum(pos_loss + neg_loss)
-# cost = pos_loss + neg_loss
 
 # traing step
-train = tf.train.AdamOptimizer(LR, beta1=0.9, beta2=0.999, epsilon=1e-08, use_locking=False).minimize(cost)
+train = tf.train.AdamOptimizer(LR).minimize(tf.reduce_mean(cost), colocate_gradients_with_ops=True)
 
 loss_graph = []
 val_graph = []
+
 with tf.device('/gpu'), tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
 
@@ -137,7 +136,7 @@ with tf.device('/gpu'), tf.Session() as sess:
             logEntry("debugger 1 ========= >  " + str(b) + "batch of" + str(int(train_data.shape[0] / batch_size)))
             train_batch_data = train_data[b * batch_size: (b + 1) * batch_size]
             y_pos = np.reshape(train_batch_data[:, 3], (batch_size, 1))
-            y_neg = (y_pos - 1) * (-1)  # change
+            y_neg = (y_pos - 1) * (-1)
             count = 0
             for i in range(batch_size):
                 # logEntry("debugger 1 ========= >  " + str(train_batch_data[i, 0][0]) + "\t\t" + str(train_batch_data[i, 0][1]) +
@@ -154,8 +153,8 @@ with tf.device('/gpu'), tf.Session() as sess:
                     batch2 = np.concatenate((batch2, img2.reshape((1, 224, 224, 3))), 0)
 
                 count += 1
+
             _, costp = sess.run([train, cost], feed_dict={images1: batch1, images2: batch2, pos: y_pos, neg: y_neg, train_mode: True})
-            # costp = sess.run(cost, feed_dict={images1: batch1, images2: batch2, pos: y_pos, neg: y_neg, train_mode: False})
             logEntry("debugger 3 ========= >  " + str(costp))
 
             loss_avg += np.sum(costp)
