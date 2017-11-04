@@ -5,12 +5,15 @@ import numpy as np
 import os
 import itertools
 import random
+import time
 import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 plt.switch_backend('agg')
 from sklearn import metrics
 import seaborn as sns
+from operator import itemgetter
+
 
 tf.set_random_seed(1)
 tf.logging.set_verbosity(tf.logging.ERROR)
@@ -65,29 +68,37 @@ EPOCH = 100
 LR = 1e-6
 
 
-model = "testX2"
+model = "testP1"
 main_dir = "/flush1/raj034/vgg19/" + model + "/"
 os.system("mkdir " + main_dir)
 LOG_FILE = open(main_dir + 'log.txt', 'a')
 
-train_data = np.load("data/final_train.npy")
+train_data = np.load("data/new_train_data.npy", encoding='latin1')
 logEntry("debugger a ========= >  " + str(train_data.shape))
-train_data = train_data[0:800, :]
+# train_data = train_data[0:800, :]
 # logEntry("debugger b ========= >  " + str(train_data.shape))
 
-val_data = np.load("data/final_val.npy")
+val_data = np.load("data/final_val.npy", encoding='latin1')
 logEntry("debugger c ========= >  " + str(val_data.shape))
-val_data = val_data[0:160, :]
+val_data = val_data[0:10000, :]
 # logEntry("debugger d ========= >  " + str(val_data.shape))
 
-test_data = np.load("data/final_test.npy")
+test_data = np.load("data/final_test.npy", encoding='latin1')
+
+# get all the images at first to reduce network traffic
+pre_load = np.load("pre_load_images2.npy", encoding='latin1')
+pre_load_images = pre_load.item()
+
+pre_load = np.load("pre_load_images_val.npy", encoding='latin1')
+pre_load_images_val = pre_load.item()
+
 
 class_list = [0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
               14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
 
 
 # train positive samples
-batch_size = 64
+batch_size = 80
 
 
 # create tf models
@@ -95,7 +106,7 @@ images1 = tf.placeholder(tf.float32, [batch_size, 224, 224, 3], name="images1")
 images2 = tf.placeholder(tf.float32, [batch_size, 224, 224, 3], name="images2")
 
 pos = tf.placeholder(tf.float32, [batch_size, 1], name="positive_samples")
-neg = tf.placeholder(tf.float32, [batch_size, 1], name="negetive_samples")
+# neg = tf.placeholder(tf.float32, [batch_size, 1], name="negetive_samples")
 
 train_mode = tf.placeholder(tf.bool, name="train_mode")
 
@@ -108,6 +119,7 @@ vgg2.build(images2, train_mode)
 features1 = tf.reshape(vgg1.conv5_1, [batch_size, -1, 512], name="features1")
 features2 = tf.reshape(vgg2.conv5_1, [batch_size, -1, 512], name="features2")
 
+neg = (pos - 1) * (-1)
 gram1 = tf.matmul(tf.transpose(features1, perm=[0, 2, 1]), features1, name="gram1") / (512 * 196) / (512 * 196)
 gram2 = tf.matmul(tf.transpose(features2, perm=[0, 2, 1]), features2, name="gram2") / (512 * 196) / (512 * 196)
 loss = tf.reshape(tf.reduce_sum((gram1 - gram2), axis=[1, 2]) ** 2, (batch_size, 1), name="loss")
@@ -132,57 +144,37 @@ with tf.device('/gpu'), tf.Session() as sess:
         distibution = np.array((batch_size, 2))
         validation = np.array((batch_size, 2))
 
+        total_min_batch = int(train_data.shape[0] / batch_size)
         # training
-        for b in range(int(train_data.shape[0] / batch_size)):
-            logEntry("debugger 1 ========= >  " + str(b) + "batch of" + str(int(train_data.shape[0] / batch_size)))
+        for b in range(total_min_batch):
+            start_time = time.time()
             train_batch_data = train_data[b * batch_size: (b + 1) * batch_size]
-            y_pos = np.reshape(train_batch_data[:, 3], (batch_size, 1))
-            y_neg = (y_pos - 1) * (-1)  # change
-            count = 0
-            for i in range(batch_size):
-                # logEntry("debugger 1 ========= >  " + str(train_batch_data[i, 0][0]) + "\t\t" + str(train_batch_data[i, 0][1]) +
-                #          "\t" + str(train_batch_data[i, 1]) + "\t" + str(train_batch_data[i, 2]) + "\t" + str(train_batch_data[i, 3]))
+            y_pos = np.reshape(train_batch_data[:, 4], (batch_size, 1))
 
-                img1 = utils.load_image("/flush1/raj034/wikiart/wikiart/" + train_batch_data[i, 0][0])
-                img2 = utils.load_image("/flush1/raj034/wikiart/wikiart/" + train_batch_data[i, 0][1])
+            batch1 = itemgetter(*train_batch_data[:, 0])(pre_load_images)
+            batch2 = itemgetter(*train_batch_data[:, 1])(pre_load_images)
 
-                if count == 0:
-                    batch1 = img1.reshape((1, 224, 224, 3))
-                    batch2 = img2.reshape((1, 224, 224, 3))
-                else:
-                    batch1 = np.concatenate((batch1, img1.reshape((1, 224, 224, 3))), 0)
-                    batch2 = np.concatenate((batch2, img2.reshape((1, 224, 224, 3))), 0)
-
-                count += 1
-            _, costp = sess.run([train, cost], feed_dict={images1: batch1, images2: batch2, pos: y_pos, neg: y_neg, train_mode: True})
+            _, costp = sess.run([train, cost], feed_dict={images1: batch1, images2: batch2, pos: y_pos, train_mode: True})
             # costp = sess.run(cost, feed_dict={images1: batch1, images2: batch2, pos: y_pos, neg: y_neg, train_mode: False})
-            logEntry("debugger 3 ========= >  " + str(costp))
+            logEntry("debugger 3 ========= >  " + "epoch = " + str(epoch) + "  mini =" + str(b) + "/" + str(total_min_batch) + "\tloss = " + str(costp))
+            duration = time.time() - start_time
+            logEntry("time = " + str(duration))
 
             loss_avg += np.sum(costp)
 
         # validation
-        for b in range(int(val_data.shape[0] / batch_size)):
-            logEntry("#validation debugger 1 ========= >  " + str(b) + "batch of" + str(int(val_data.shape[0] / batch_size)))
+        total_val_min_batch = int(val_data.shape[0] / batch_size)
+        for b in range(total_val_min_batch):
             val_batch_data = val_data[b * batch_size: (b + 1) * batch_size]
             # logEntry("#validation debugger 2 ========= >  " + str(b) + "batch of" + str(val_batch_data))
 
             y_pos = np.reshape(val_batch_data[:, 3], (batch_size, 1))
-            y_neg = (y_pos - 1) * (-1)  # change
-            count = 0
-            for i in range(batch_size):
-                img1 = utils.load_image("/flush1/raj034/wikiart/wikiart/" + val_batch_data[i, 0][0])
-                img2 = utils.load_image("/flush1/raj034/wikiart/wikiart/" + val_batch_data[i, 0][1])
 
-                if count == 0:
-                    batch1 = img1.reshape((1, 224, 224, 3))
-                    batch2 = img2.reshape((1, 224, 224, 3))
-                else:
-                    batch1 = np.concatenate((batch1, img1.reshape((1, 224, 224, 3))), 0)
-                    batch2 = np.concatenate((batch2, img2.reshape((1, 224, 224, 3))), 0)
+            batch1 = itemgetter(*train_batch_data[:, 0])(pre_load_images_val)
+            batch2 = itemgetter(*train_batch_data[:, 1])(pre_load_images_val)
 
-                count += 1
-            lossp = sess.run(loss, feed_dict={images1: batch1, images2: batch2, pos: y_pos, neg: y_neg, train_mode: False})
-            logEntry("#validation debugger 3 ========= >  " + str(b) + "batch of" + str(lossp.shape))
+            lossp = sess.run(loss, feed_dict={images1: batch1, images2: batch2, pos: y_pos, train_mode: False})
+            logEntry("debugger 4 ========= >  " + "epoch = " + str(epoch) + "  mini =" + str(b) + "/" + str(total_val_min_batch))
 
             # for the distribution graphs
             distibution = np.vstack([distibution, np.hstack([lossp, y_pos])])
@@ -206,4 +198,4 @@ with tf.device('/gpu'), tf.Session() as sess:
         np.save(main_dir + str(epoch) + "/distibution.npy", distibution)
         plotDistribution(distibution, 101, val_data.shape[0])
 
-        # plt.show()
+        plt.show()

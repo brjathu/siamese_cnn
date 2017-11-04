@@ -2,6 +2,7 @@ import tensorflow as tf
 import re
 import numpy as np
 from functools import reduce
+from random import *
 
 VGG_MEAN = [103.939, 116.779, 123.68]
 
@@ -33,7 +34,7 @@ class sia:
         Returns:
           Variable Tensor
         """
-        with tf.device('/cpu:0'):
+        with tf.device('/cpu:%d' % randint(1, 20)):
             dtype = tf.float32
             var = tf.get_variable(name, shape, initializer=initializer, dtype=dtype)
         return var
@@ -58,11 +59,13 @@ class sia:
     # def name(self):
     #     return 'Name: ' + self.name.name
 
-    def inference(self, images1, images2, pos, neg):
+    def inference(self, images1, images2, pos):
 
         print(images1.shape)
         print(images2.shape)
 
+        neg = tf.subtract(pos, 1) * (-1)
+        # print(neg)
         with tf.variable_scope("siamese"):
             # vgg19_1
             with tf.variable_scope('vgg19_1') as scope:
@@ -77,9 +80,21 @@ class sia:
 
                 sia1_conv3_1 = self.conv_layer(sia1_pool2, 128, 256, "conv3_1")
                 sia1_conv3_2 = self.conv_layer(sia1_conv3_1, 256, 256, "conv3_2")
-                features1 = tf.reshape(sia1_conv3_2, [self.batch_size, -1, 256], name="features1")
+                sia1_conv3_3 = self.conv_layer(sia1_conv3_2, 256, 256, "conv3_3")
+                sia1_conv3_4 = self.conv_layer(sia1_conv3_3, 256, 256, "conv3_4")
+                sia1_pool3 = self.max_pool(sia1_conv3_4, 'pool3')
+
+                sia1_conv4_1 = self.conv_layer(sia1_pool3, 256, 512, "conv4_1")
+                sia1_conv4_2 = self.conv_layer(sia1_conv4_1, 512, 512, "conv4_2")
+                sia1_conv4_3 = self.conv_layer(sia1_conv4_2, 512, 512, "conv4_3")
+                sia1_conv4_4 = self.conv_layer(sia1_conv4_3, 512, 512, "conv4_4")
+                sia1_pool4 = self.max_pool(sia1_conv4_4, 'pool4')
+
+                sia1_conv5_1 = self.conv_layer(sia1_pool4, 512, 512, "conv5_1")
+                sia1_conv5_2 = self.conv_layer(sia1_conv5_1, 512, 512, "conv5_2")
+                features1 = tf.reshape(sia1_conv5_2, [self.batch_size, -1, 512], name="features1")
                 # print("features1", features1.shape)
-                gram1 = tf.matmul(tf.transpose(features1, perm=[0, 2, 1]), features1, name="gram1") / (256 * 3196) / (256 * 3196)
+                gram1 = tf.matmul(tf.transpose(features1, perm=[0, 2, 1]), features1, name="gram1") / (512 * 196) / (512 * 196)
                 # print("gram1", gram1.shape)
 
             # self._activation_summary(sia1_conv3_2)
@@ -97,16 +112,28 @@ class sia:
 
                 sia2_conv3_1 = self.conv_layer(sia2_pool2, 128, 256, "conv3_1")
                 sia2_conv3_2 = self.conv_layer(sia2_conv3_1, 256, 256, "conv3_2")
-                features2 = tf.reshape(sia2_conv3_2, [self.batch_size, -1, 256], name="features2")
+                sia2_conv3_3 = self.conv_layer(sia2_conv3_2, 256, 256, "conv3_3")
+                sia2_conv3_4 = self.conv_layer(sia2_conv3_3, 256, 256, "conv3_4")
+                sia2_pool3 = self.max_pool(sia2_conv3_4, 'pool3')
+
+                sia2_conv4_1 = self.conv_layer(sia2_pool3, 256, 512, "conv4_1")
+                sia2_conv4_2 = self.conv_layer(sia2_conv4_1, 512, 512, "conv4_2")
+                sia2_conv4_3 = self.conv_layer(sia2_conv4_2, 512, 512, "conv4_3")
+                sia2_conv4_4 = self.conv_layer(sia2_conv4_3, 512, 512, "conv4_4")
+                sia2_pool4 = self.max_pool(sia2_conv4_4, 'pool4')
+
+                sia2_conv5_1 = self.conv_layer(sia2_pool4, 512, 512, "conv5_1")
+                sia2_conv5_2 = self.conv_layer(sia2_conv5_1, 512, 512, "conv5_2")
+                features2 = tf.reshape(sia2_conv5_2, [self.batch_size, -1, 512], name="features2")
                 # print("features2", features2.shape)
-                gram2 = tf.matmul(tf.transpose(features2, perm=[0, 2, 1]), features2, name="gram2") / (256 * 3196) / (256 * 3196)
+                gram2 = tf.matmul(tf.transpose(features2, perm=[0, 2, 1]), features2, name="gram2") / (512 * 196) / (512 * 196)
                 # print("gram2", gram2.shape)
 
             self.data_dict = None
 
             loss = tf.reshape(tf.reduce_sum((gram1 - gram2), axis=[1, 2]) ** 2, (self.batch_size, 1), name="loss")
             pos_loss = tf.multiply(tf.reshape(loss, (self.batch_size, 1)), pos, name="pos_loss")
-            neg_loss = tf.multiply(tf.where(tf.less(loss, self.M), self.M - loss, tf.zeros_like(loss)), neg, name="neg_loss")
+            neg_loss = tf.multiply(tf.where(tf.less(loss, 200), 200 - loss, tf.zeros_like(loss)), neg, name="neg_loss")
             loss = tf.reduce_sum(pos_loss + neg_loss, name="total_loss")
 
             tf.add_to_collection('losses', loss)
