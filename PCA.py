@@ -20,7 +20,7 @@ import pickle
 
 # from matplotlib.mlab import PCA
 
-model = "testX1/0"
+model = "testP4/3"
 
 main_dir = "/flush1/raj034/vgg19/" + model + "/"
 LOG_FILE = open(main_dir + 'log.txt', 'a')
@@ -42,7 +42,7 @@ def main():
     train_vect = np.load(main_dir + "train_vectors.npy")
     train_label = np.load(main_dir + "train_label.npy")
 
-    pca = PCA(n_components=2000)
+    pca = PCA(n_components=4096)
 
     results = pca.fit_transform(train_vect)
 

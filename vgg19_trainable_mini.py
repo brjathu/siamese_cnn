@@ -53,21 +53,6 @@ class Vgg19:
 
         self.conv3_1 = self.conv_layer(self.pool2, 128, 256, "conv3_1")
         self.conv3_2 = self.conv_layer(self.conv3_1, 256, 256, "conv3_2")
-        self.conv3_3 = self.conv_layer(self.conv3_2, 256, 256, "conv3_3")
-        self.conv3_4 = self.conv_layer(self.conv3_3, 256, 256, "conv3_4")
-        self.pool3 = self.max_pool(self.conv3_4, 'pool3')
-
-        self.conv4_1 = self.conv_layer(self.pool3, 256, 512, "conv4_1")
-        self.conv4_2 = self.conv_layer(self.conv4_1, 512, 512, "conv4_2")
-        self.conv4_3 = self.conv_layer(self.conv4_2, 512, 512, "conv4_3")
-        self.conv4_4 = self.conv_layer(self.conv4_3, 512, 512, "conv4_4")
-        self.pool4 = self.max_pool(self.conv4_4, 'pool4')
-
-        self.conv5_1 = self.conv_layer(self.pool4, 512, 512, "conv5_1")
-        self.conv5_2 = self.conv_layer(self.conv5_1, 512, 512, "conv5_2")
-        self.conv5_3 = self.conv_layer(self.conv5_2, 512, 512, "conv5_3")
-        self.conv5_4 = self.conv_layer(self.conv5_3, 512, 512, "conv5_4")
-        # self.conv5_2 = self.conv_layer(self.conv5_1, 512, 512, "conv5_2")
 
         self.data_dict = None
 
@@ -122,6 +107,7 @@ class Vgg19:
 
         if self.trainable:
             var = tf.Variable(value, name=var_name)
+            # var = tf.get_variable(var_name, initializer=value)
         else:
             var = tf.constant(value, dtype=tf.float32, name=var_name)
 

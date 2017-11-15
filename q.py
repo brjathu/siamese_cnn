@@ -1,55 +1,55 @@
-import glob
-from tqdm import tqdm
-import tensorflow as tf
+# import glob
+# from tqdm import tqdm
+# import tensorflow as tf
 import numpy as np
-import time
-from multiprocessing import Pool
-from multiprocessing.dummy import Pool as ThreadPool
-from multiprocessing import Queue
-from operator import itemgetter
+# import time
+# from multiprocessing import Pool
+# from multiprocessing.dummy import Pool as ThreadPool
+# from multiprocessing import Queue
+# from operator import itemgetter
 
 # def my_fun(a):
 #     return a * a
 
 
-train_data = np.load("data/new_train_data.npy", encoding='latin1')
+# train_data = np.load("data/new_train_data.npy", encoding='latin1')
 
 
-pre_load_images = np.load("pre_load_images.npy", encoding='latin1').item()
+# pre_load_images = np.load("pre_load_images.npy", encoding='latin1').item()
 
 
-count = 0
-# test1
-s = time.time()
+# count = 0
+# # test1
+# s = time.time()
 
-for i in range(300):
-    img1 = pre_load_images[train_data[i, 0]]
-    img2 = pre_load_images[train_data[i, 1]]
+# for i in range(300):
+#     img1 = pre_load_images[train_data[i, 0]]
+#     img2 = pre_load_images[train_data[i, 1]]
 
-    if count == 0:
-        batch1 = img1
-        batch2 = img2
-    else:
-        batch1 = np.concatenate((batch1, img1), 0)
-        batch2 = np.concatenate((batch2, img2), 0)
-    count += 1
+#     if count == 0:
+#         batch1 = img1
+#         batch2 = img2
+#     else:
+#         batch1 = np.concatenate((batch1, img1), 0)
+#         batch2 = np.concatenate((batch2, img2), 0)
+#     count += 1
 
-print(batch1.shape)
-print(time.time() - s)
-
-
-# test2
-s = time.time()
-
-a = train_data[0:300, 0]
-b = train_data[0:300, 1]
-
-img11 = np.reshape(itemgetter(*a)(pre_load_images), (300, 224, 224, 3))
-img22 = np.reshape(itemgetter(*b)(pre_load_images), (300, 224, 224, 3))
+# print(batch1.shape)
+# print(time.time() - s)
 
 
-print(np.array(img11).shape)
-print(time.time() - s)
+# # test2
+# s = time.time()
+
+# a = train_data[0:300, 0]
+# b = train_data[0:300, 1]
+
+# img11 = np.reshape(itemgetter(*a)(pre_load_images), (300, 224, 224, 3))
+# img22 = np.reshape(itemgetter(*b)(pre_load_images), (300, 224, 224, 3))
+
+
+# print(np.array(img11).shape)
+# print(time.time() - s)
 
 # count = 0
 # s = time.time()
@@ -99,3 +99,20 @@ print(time.time() - s)
 #     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 #     for i in tqdm(range(10000)):
 #         img.eval().mean()
+
+
+a = np.load("data/final_val.npy", encoding='latin1')
+
+print(a.shape)
+new = []
+
+for img in a:
+    print(img)
+    new.append([img[0][0], img[0][1], img[1], img[2], img[3]])
+
+b = np.array(new)
+print(b)
+print(b.shape)
+
+
+np.save("data/new_val_data.npy", b)

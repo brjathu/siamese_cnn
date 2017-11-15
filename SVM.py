@@ -20,7 +20,7 @@ import pickle
 
 # preprocessing
 
-model = "testX1/0"
+model = "testP4/3"
 
 main_dir = "/flush1/raj034/vgg19/" + model + "/"
 LOG_FILE = open(main_dir + 'log.txt', 'a')

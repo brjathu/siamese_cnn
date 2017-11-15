@@ -31,7 +31,6 @@ class_list = [0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
               14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
 
 train_data = np.load("data/new_train_data.npy", encoding='latin1')
-train_images = np.load("data/train_data.npy", encoding='latin1')
 # logEntry("debugger a ========= >  " + str(train_data.shape))
 # train_data = train_data[0:810, :]
 
@@ -39,8 +38,6 @@ train_images = np.load("data/train_data.npy", encoding='latin1')
 val_data = np.load("data/final_val.npy", encoding='latin1')
 # logEntry("debugger c ========= >  " + str(val_data.shape))
 # val_data = val_data[0:160, :]
-
-test_data = np.load("data/final_test.npy", encoding='latin1')
 
 
 # get all the images at first to reduce network traffic
